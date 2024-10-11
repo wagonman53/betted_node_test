@@ -52,19 +52,18 @@ feature_col_mda = ["player_rank","Flop_rank","Flop_class"]
 feature_col_gto = ["Flop_rank","Flop_class"]
 
 with st.sidebar.form(key="sidebar_form"):
-    with st.expander("ヒートマップと表分析の設定"):
+    with st.expander("ヒートマップの設定"):
         pivot_x = st.selectbox("ヒートマップのx軸",feature_col_mda,index=0)
         pivot_y = st.selectbox("ヒートマップのy軸",feature_col_mda,index=1)
         pivot_z = st.selectbox("ヒートマップのz軸",["Bluff EV","Raise%"])
-        dfg_col_mda = st.multiselect("表データの特徴量",feature_col_mda,default=["player_rank","Flop_rank","Flop_class"])
-        dfg_col_gto = list(set(dfg_col_mda)&set(feature_col_gto))
-    with st.expander("弾性と役グラフの設定"):
+    with st.expander("ボード設定(弾性と役分布用)"):
         player_rank = st.selectbox("プレイヤーランクの選択",["All","0-1k","1k-10k","10k-100k","over 100k"])
         flop_high  = st.selectbox("ハイカードの選択",["All","2-9","10-Q","K","A"])
         flop_class  = st.selectbox("ボード種類の選択",["All","Paired","Monotone","Rainbow","Twotone"])
+    with st.expander("役分布の設定"):
+        action = st.selectbox("アクションを選択",["call","raise"])
         mda_flop_size = st.selectbox("MDAの前ノードのbetサイズを選択",["All"]+list(df_mda["Flop_bet_size"].unique()))
         gto_flop_size = st.selectbox("GTOの前ノードのbetサイズを選択",["All"]+list(df_gto["Flop_bet_size"].unique()))
-        action = st.selectbox("アクションを選択",["call","raise"])
     submit_button = st.form_submit_button(label='更新')
 
 #pivot目的変数の設定
@@ -75,8 +74,9 @@ else:
     df_mda["target"] = (df_mda["Flop action 2"] == 'raise').astype(int)
     df_gto["target"] = (df_gto["Flop action 2"] == 'raise').astype(int)
 
-st.header("betされた後のnode テスト")
-st.text("BBvsBTN3betでBBのCBを受けたBTNのアクションを分析対象としています")
+st.header("betted node テスト")
+st.text("相手がbetもしくはraiseした後のノードを対象としています")
+st.text("BBvsBTN3betでBBのCBを受けたBTNのアクションをサンプルデータとしています")
 
 #ヒートマップの表示
 st.subheader("ピボットヒートマップ")
@@ -88,7 +88,7 @@ st.plotly_chart(fig1, use_container_width=True)
 #表データの表示
 st.subheader("表分析")
 st.text("Targetの数値はピボットと同様の設定です")
-dfg = graph_function.plot_table(df_mda,df_gto,dfg_col_mda,dfg_col_gto,"target")
+dfg = graph_function.plot_table(df_mda,df_gto,feature_col_mda,feature_col_gto,"target")
 st.dataframe(dfg)
 
 #データの絞り込み
@@ -112,8 +112,8 @@ if action == "call":
     df_mda_filtered = df_mda_filtered[df_mda_filtered["Flop action 2"]=="call"]
     df_gto_filtered = df_gto_filtered[df_gto_filtered["Flop action 2"]=="call"]
 else:
-    df_mda_filtered = df_mda_filtered[df_mda_filtered["Flop action 2"]!="raise"]
-    df_gto_filtered = df_gto_filtered[df_gto_filtered["Flop action 2"]!="raise"]
+    df_mda_filtered = df_mda_filtered[df_mda_filtered["Flop action 2"]=="raise"]
+    df_gto_filtered = df_gto_filtered[df_gto_filtered["Flop action 2"]=="raise"]
 
 #サイズの絞り込み
 if mda_flop_size != "All":
@@ -134,5 +134,3 @@ st.plotly_chart(fig3, use_container_width=True)
 st.subheader("アクション毎の役構成(SDバイアス除去)")
 fig4 = graph_function.plot_range_nobias(df_mda_filtered,df_gto_filtered,"IP_Flop_hand_rank",dic_coef)
 st.plotly_chart(fig4, use_container_width=True)
-st.subheader("SDバイアス除去に使用した係数")
-st.dataframe(df_coef)
